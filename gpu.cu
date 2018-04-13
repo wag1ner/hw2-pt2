@@ -146,7 +146,7 @@ int main( int argc, char **argv )
             save( fsave, n, particles);
         }
     }
-    cudaThreadSynchronize();
+   // cudaThreadSynchronize();        //may need to commet out to upspeed
     simulation_time = read_timer( ) - simulation_time;
 
     printf( "CPU-GPU copy time = %g seconds\n", copy_time);
