@@ -114,7 +114,7 @@ int main( int argc, char **argv )
     // Copy the particles to the GPU
     cudaMemcpy(d_particles, particles, n * sizeof(particle_t), cudaMemcpyHostToDevice);
 
-    cudaThreadSynchronize();
+  //  cudaThreadSynchronize();
     copy_time = read_timer( ) - copy_time;
 
     //
