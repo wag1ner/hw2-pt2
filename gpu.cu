@@ -194,7 +194,7 @@ int main( int argc, char **argv )
     //
     //  simulate a number of time steps
     //
-    cudaThreadSynchronize();
+   // cudaThreadSynchronize();      //commented out from original
     double simulation_time = read_timer( );
 
     for( int step = 0; step < NSTEPS; step++ )
