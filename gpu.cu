@@ -194,8 +194,37 @@ int main( int argc, char **argv )
     //
     //  simulate a number of time steps
     //
-   // cudaThreadSynchronize();      //commented out from original
+    cudaThreadSynchronize();      // can I commented out from original
     double simulation_time = read_timer( );
+
+    num = (int)ceil(size*1.0 / DIM); // we get the num of the grid for one directions
+    tot_num = num * num; // total number of grids
+    da = size/num; // the acutal size of a subgrid
+
+    int blks = (n + NUM_THREADS - 1) / NUM_THREADS;
+    int g_blks = (tot_num + NUM_THREADS - 1) / NUM_THREADS;
+
+
+    int * d_grids;
+    cudaMalloc((void **) &d_grids, tot_num * sizeof(int));
+    int * d_next;
+    cudaMalloc((void **) &d_next, n * sizeof(int));
+
+    cudaThreadSynchronize();
+
+ //   clear_grids <<< g_blks, NUM_THREADS >>> (tot_num, d_grids);
+
+    assign_particles <<< blks, NUM_THREADS >>> (n, d_particles, d_next, d_grids, da, num);
+
+    cudaThreadSynchronize();
+
+    set_grid_time = read_timer() - set_grid_time;
+
+
+  //  cudaThreadSynchronize();
+    double simulation_time = read_timer( );
+
+
 
     for( int step = 0; step < NSTEPS; step++ )
     {
