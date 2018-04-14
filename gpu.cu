@@ -7,10 +7,44 @@
 
 #define NUM_THREADS 256
 
+int number, totalN;
+double da;
+
 extern double size;
 //
 //  benchmarking program
 //
+
+
+
+__global__ int place(double x, double y, double da, int number) {
+    int xID = x / da;
+    int yID = y / da;
+    return xID * number + yID;
+}
+
+__global__ int place(particle_t &particle, double da, int number) {
+    int xID = particle.x / da;
+    int yID = particle.y / da;
+    return xID * number + yID;
+}
+
+__global__ void assign_particles(int n, particle_t * particles, int* d_next, int* d_grids, double da, int number) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    if(tid >= n) return;
+
+    int k = locationToID(particles[tid], da, number);
+    d_next[tid] = atomicExch(&d_grids[k], tid);
+}
+
+__global__ void grids(int totalN, int* d_grids) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    if(tid >= totalN) return;
+
+    d_grids[tid] = -1;
+}
+
+
 
 __device__ void apply_force_gpu(particle_t &particle, particle_t &neighbor)
 {
@@ -43,6 +77,46 @@ __global__ void compute_forces_gpu(particle_t * particles, int n)
         apply_force_gpu(particles[tid], particles[j]);
 
 }
+
+
+__global__ void compute_grid_forces_gpu(particle_t * particles, int * d_next,int tot_num, int * d_grids, double dim, int num)
+{
+    // Get thread (particle) ID
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    if(tid >= tot_num) return;
+
+    int xID = tid / num;
+    int yID = tid % num;
+    int k = tid;
+
+    for(int i = d_grids[tid]; i != -1; i = d_next[i]) {
+        particle_t * p = &particles[i];
+
+        p->ax = p->ay = 0;
+
+        // check self
+        compute_self_grid_forces(i, particles, d_next, d_grids[k]);
+
+        // check other
+        if(xID > 0) {
+            compute_grid_forces(i, particles, d_next, d_grids[k - num]);
+            if(yID > 0)
+                compute_grid_forces(i, particles, d_next, d_grids[k - num - 1]);
+            if(yID < num - 1)
+                compute_grid_forces(i, particles, d_next, d_grids[k - num + 1]);
+        }
+        if(xID < num - 1) {
+            compute_grid_forces(i, particles, d_next, d_grids[k + num]);
+            if(yID > 0)
+                compute_grid_forces(i, particles, d_next, d_grids[k + num - 1]);
+            if(yID < num - 1)
+                compute_grid_forces(i, particles, d_next, d_grids[k + num + 1]);
+        }
+        if(yID > 0) compute_grid_forces(i, particles, d_next, d_grids[k - 1]);
+        if(yID < num - 1) compute_grid_forces(i, particles, d_next, d_grids[k + 1]);
+    }
+}
+
 
 __global__ void move_gpu (particle_t * particles, int n, double size)
 {
